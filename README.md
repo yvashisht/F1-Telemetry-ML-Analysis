@@ -62,6 +62,22 @@ lap_time = (
 
 ---
 
+---
+
+Model Summary
+
+| Model                 | Handles Non-Linearity             | Regularization            | Feature Selection       | Notes                          |
+|----------------------|-----------------------------------|---------------------------|--------------------------|--------------------------------|
+| Linear Regression     | ❌                                | ❌                        | ❌                       | Simple, fast                   |
+| Ridge                 | ❌                                | ✅ L2                     | ❌                       | Penalizes big weights          |
+| Lasso                 | ❌                                | ✅ L1                     | ✅                       | Shrinks unimportant features   |
+| Random Forest         | ✅                                | ❌                        | ❌                       | Very accurate, black box       |
+| Gradient Boosting     | ✅✅                              | ✅                        | ❌                       | Often top performer            |
+| Polynomial (Linear)   | ✅ (via feature engineering)      | ✅ (with Ridge/Lasso)     | ✅                       | Can overfit                    |
+| SVR                   | ✅                                | ✅                        | ❌                       | Works well on small data       |
+
+---
+
 ##  🤝 Contributions
 Have better data, ideas, or simulations? PRs and forks welcome! You can also reach out if you'd like to collaborate on building out the ML model or integrating it with track-specific simulations.
 
