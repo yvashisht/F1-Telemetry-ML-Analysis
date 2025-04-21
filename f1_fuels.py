@@ -219,65 +219,92 @@ plt.grid(True)
 plt.tight_layout()
 # plt.show()
 
-print("\n🛠️ Starting fuel blend optimization (vectorized)...")
+print("\n🛠️ Lets target a specific lap time using our newly created model...")
 
-# Step 1: Generate a large number of random blends
-n_samples = 5000  # Can be increased for more coverage
-blend_data = pd.DataFrame({
-    "RON": np.random.uniform(97.5, 100.5, n_samples),
-    "Energy Density (MJ/kg)": np.random.uniform(43.5, 44.2, n_samples),
-    "Fuel Density (kg/m³)": np.random.uniform(750, 810, n_samples),  # ⬅️ raised
-    "Combustion Temp (°C)": np.random.uniform(870, 890, n_samples),
-})
+# Now lets work backwards. I want to achieve a win. Lets use Charles's data from 2024 Monaco
+# His finishing time wasL 2 hrs, 23 mins, 15.554 s - an average lap time of 1:50.199 (over 78 laps)
 
-# Step 2: Calculate derived columns
-blend_data["Fuel Mass (kg)"] = 4400 / blend_data["Energy Density (MJ/kg)"]
-blend_data["Fuel Burn per Lap (kg)"] = blend_data["Fuel Mass (kg)"] / 78
-blend_data["Avg Fuel Mass (kg)"] = blend_data["Fuel Mass (kg)"] / 2
-blend_data["Weight Penalty (s)"] = blend_data["Avg Fuel Mass (kg)"] * 0.03
-blend_data["Fuel Volume (L)"] = (blend_data["Fuel Mass (kg)"] / blend_data["Fuel Density (kg/m³)"]) * 1000
+from scipy.optimize import minimize
 
-# Step 3: Filter by FIA constraints
-legal_blends = blend_data[
-    (blend_data["Fuel Mass (kg)"] <= 110) &
-    (blend_data["Fuel Volume (L)"] <= 100)
-].copy()
+# Target average lap time (in seconds)
+target_lap_time = 110.199
+energy_required = 3600  # MJ
 
-print(f"\n✅ {len(legal_blends)} FIA-legal fuel blends generated out of {n_samples} total.")
-
-# Step 4: Predict lap time
-if legal_blends.empty:
-    print("❌ No valid blends found. Try loosening constraints or increasing sample size.")
-else:
-    try:
-        legal_blends = legal_blends[X.columns]  # Match model input
-        legal_blends["Predicted Lap Time (s)"] = poly_ridge_model.predict(legal_blends)
-        print("✅ Prediction completed.")
-    except Exception as e:
-        print("❌ Prediction failed:", e)
-        raise
-
-    # Step 5: Show optimal configuration
-    best_blend = legal_blends.sort_values("Predicted Lap Time (s)").head(1)
-    print("\n🏎️ Optimal (Legal) Fuel Blend for Fastest Lap:")
-    print(best_blend.T)
-
-    # Step 6: Visualize
-    plt.figure(figsize=(10, 6))
-    sns.scatterplot(
-        data=legal_blends,
-        x="Fuel Volume (L)",
-        y="Predicted Lap Time (s)",
-        color="green",
-        alpha=0.6
+# Define the optimization objective function
+def objective(params):
+    ron, ed, fd, temp = params
+    fuel_mass = energy_required / ed
+    avg_mass = fuel_mass / 2
+    weight_penalty = avg_mass * 0.03
+    predicted_lap_time = (
+        90
+        - ron * 0.05
+        + fuel_mass * 0.01
+        + weight_penalty * 5
+        - ed * 0.5
     )
-    plt.axvline(100, color='black', linestyle='--', label='FIA Volume Limit (100L)')
-    plt.xlabel("Fuel Volume (L)")
-    plt.ylabel("Predicted Lap Time (s)")
-    plt.title("Lap Time vs Fuel Volume – Only Legal Blends")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    # plt.show()
+    return abs(predicted_lap_time - target_lap_time)
 
-    print("\n✅ Script reached the end successfully!")
+# Constraints
+def volume_constraint(params):
+    _, ed, fd, _ = params
+    fuel_mass = energy_required / ed
+    volume = (fuel_mass / fd) * 1000
+    return 100 - volume
+
+def mass_constraint(params):
+    _, ed, _, _ = params
+    fuel_mass = energy_required / ed
+    return 110 - fuel_mass
+
+constraints = [
+    {'type': 'ineq', 'fun': volume_constraint},
+    {'type': 'ineq', 'fun': mass_constraint}
+]
+
+# Bounds: [RON, Energy Density, Fuel Density, Temp]
+bounds = [
+    (97.5, 100.5),
+    (43.5, 44.2),
+    (740, 820),
+    (870, 890)
+]
+
+# Run optimization
+result = minimize(
+    objective,
+    x0=[99, 44.0, 790, 880],
+    bounds=bounds,
+    constraints=constraints,
+    method='SLSQP'
+)
+
+# Extract optimized values
+ron, ed, fd, temp = result.x
+fuel_mass = energy_required / ed
+volume = (fuel_mass / fd) * 1000
+avg_mass = fuel_mass / 2
+weight_penalty = avg_mass * 0.03
+predicted_lap_time = (
+    90
+    - ron * 0.05
+    + fuel_mass * 0.01
+    + weight_penalty * 5
+    - ed * 0.5
+)
+
+# Show results
+final_blend = pd.DataFrame([{
+    "RON": ron,
+    "Energy Density (MJ/kg)": ed,
+    "Fuel Density (kg/m³)": fd,
+    "Combustion Temp (°C)": temp,
+    "Fuel Mass (kg)": fuel_mass,
+    "Fuel Volume (L)": volume,
+    "Avg Fuel Mass (kg)": avg_mass,
+    "Weight Penalty (s)": weight_penalty,
+    "Predicted Lap Time (s)": predicted_lap_time
+}])
+
+print("\n🏁 Optimized Fuel Blend to Match Charles Leclerc's Average Lap Time (Monaco 2024):")
+print(final_blend.T.round(3))

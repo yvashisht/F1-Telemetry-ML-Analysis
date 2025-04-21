@@ -78,7 +78,35 @@ Model Summary
 
 ---
 
-##  🤝 Contributions
-Have better data, ideas, or simulations? PRs and forks welcome! You can also reach out if you'd like to collaborate on building out the ML model or integrating it with track-specific simulations.
+## 🔍 Results & Insights
+
+After training multiple regression models, the **Polynomial Regression with Ridge Regularization** gave the best results, achieving:
+
+- **Training R²:** 0.91  
+- **Validation R²:** 0.84  
+
+Using this model, we simulated thousands of hypothetical fuel blends. By optimizing within FIA limits (≤110 kg fuel mass and ≤100 L volume), we were able to identify the ideal blend for **Monaco 2024**, targeting Charles Leclerc's average winning lap time of **1:50.199**.
+
+This model predicted an optimal configuration that balanced energy density, octane rating, and fuel volume to squeeze out the best performance — all while staying legal under FIA constraints.
 
 ---
+
+## 🚀 Future Improvements
+
+To make the project even more realistic:
+
+- Use **real telemetry or sim racing data** (via FastF1, iRacing telemetry exports)
+- Simulate **burn rate per lap**, adjusting for mass drop-off
+- Replace lap time formula with a **track dynamics model**
+- Add **aero and tire models** to capture full car-fuel-lap interaction
+- Extend to **race strategy modeling** (stints, undercut risk, etc.)
+
+---
+
+## 🧠 Credits & References
+
+- FIA Technical Regulations  
+- Shell Motorsport Fuel Research  
+- BP Castrol Fuel Science Briefs  
+- FastF1 Python Telemetry Toolkit  
+- Motorsport Engineering literature from Oxford Brookes
